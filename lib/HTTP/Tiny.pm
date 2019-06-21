@@ -1569,17 +1569,24 @@ sub _assert_ssl {
 
 sub can_reuse {
     my ($self,$scheme,$host,$port,$peer) = @_;
-    return 0 if
+    my $is_bad =
         $self->{pid} != $$
         || $self->{tid} != _get_tid()
         || length($self->{rbuf})
         || $scheme ne $self->{scheme}
         || $host ne $self->{host}
         || $port ne $self->{port}
-        || $peer ne $self->{peer}
-        || eval { $self->can_read(0) }
-        || $@ ;
+        || $peer ne $self->{peer};
+
+    return 0 if $is_bad;
+    $is_bad = eval { $self->can_read(0) } || $@ ;
+    if ($is_bad) {
+        warn "---> NOT reuse socket because it can_read returns true value\n";
+        return 0;
+    } else {
+        warn "---> Reuse socket\n";
         return 1;
+    }
 }
 
 # Try to find a CA bundle to validate the SSL cert,
